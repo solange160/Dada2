@@ -5,5 +5,8 @@ output: github_document
 ```{bash}
 wget https://mothur.s3.us-east-2.amazonaws.com/wiki/miseqsopdata.zip
 ```
+```{r}
+unzip ("miseqsopdata.zip")
+```
 
 

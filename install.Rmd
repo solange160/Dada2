@@ -9,3 +9,8 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 BiocManager::install("dada2", version = "3.23")
 ```
 
+a
+
+```{r}
+force = TRUE
+```

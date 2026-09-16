@@ -4,12 +4,11 @@ output: github_document
 ---
 ```{r}
 library(dada2); packageVersion("dada2")
-
 ```
 
 
 ```{r}
-path <- "/home/rstudio/Dada2/MiSeq_SOP" # CHANGE ME to the directory containing the fastq files after unzipping.
+path <- "/home/rstudio/Dada2/Dada2/MiSeq_SOP" # CHANGE ME to the directory containing the fastq files after unzipping.
 list.files(path)
 ```
 ```{r}
@@ -48,3 +47,5 @@ out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
 head(out)   
 ```
 
+
+  
