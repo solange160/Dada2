@@ -23,4 +23,11 @@ BiocManager::install("dada2", version = "3.23")
     ##     class, cluster, KernSmooth, lattice, MASS, Matrix, nlme, nnet, spatial,
     ##     survival
 
-    ## Old packages: 'diffobj'
+    ## Old packages: 'readxl', 'S4Arrays', 'S4Vectors', 'selectr', 'SparseArray',
+    ##   'tinytex', 'xfun'
+
+a
+
+``` r
+force = TRUE
+```
