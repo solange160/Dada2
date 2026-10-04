@@ -7,6 +7,10 @@ wget https://mothur.s3.us-east-2.amazonaws.com/wiki/miseqsopdata.zip
 ```
 ```{r}
 unzip ("miseqsopdata.zip")
+
 ```
+
+```{r}
+unzip ("silva_nr99_v138.2_toGenus_trainset.fa.gz")
 
 

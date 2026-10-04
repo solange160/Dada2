@@ -14,3 +14,12 @@ a
 ```{r}
 force = TRUE
 ```
+
+```{r}
+# Installer Bioconductor et packages nécessaires
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install(c("DECIPHER", "phyloseq", "Biostrings"))
+```
+
