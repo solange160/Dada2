@@ -111,3 +111,9 @@ rownames(taxa.print) <- NULL
 head(taxa.print)
 ```
 
+```{r}
+library(DECIPHER); packageVersion("DECIPHER")
+```
+
+
+
