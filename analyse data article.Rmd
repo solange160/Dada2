@@ -56,4 +56,9 @@ plotQualityProfile(fnRs[1:2])
 ```
 This shows us that the forward and the reverse reads don't have the same quality.
 The forward reads maintain a very high quality throughout most of the sequencing run, with the quality score remaining around 30 to 40 across almost 300 cycles. We only see a small decrease in quality at the end of the reads. This means that we can expect a low sequencing error rate.
-The reverse reads have a noticeable decline in quality bj
+The reverse reads have a noticeable decline in quality toward the end of the sequencing. The quality score remain relatively high during the first 200-220 cycles (but lower than for the forward reads). Then, we see a significant decrease in quality score after avour 230 cycles.This means that we can expect a higher probability to have a high sequencing error rate.
+
+Next, we have to filter and trim our data.
+We need to trunc our reads so we can merge them later. In the paper, they use the V3-V4 region and use "truncLen = c(270,210).
+
+
