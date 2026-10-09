@@ -1,0 +1,35 @@
+---
+title: "mon article ADM"
+author: "Solange Gailhard"
+date: "2026-10-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#executer le script ena files dans 1 nouveau fichier (elles sont dans le fichier 'data article')
+#aller dans 'data article' et faire 'source ena...' et vérifier de bien être dans le bon working directory
+#verifié si bon nombre de finchier: 'ls' pour montrer les fichier. Pour les compter faire 'ls | wc -l'
+
+#télécharger données brut et introduire métadonnées (tuto dada2)
+#pour nos données, récupérer métadonnées dans sra run selector (mettre numero d'accession,) acceder à la table des métadonnées par échantillons (télécharger en cliquant sur metadata sous download) a telecharge une table excel et apres mettre la table dans le working directory. Le mettre direct dans l'environment (pas dans data article mais dans dada2)
+#trouver 1 fonction de r pour importer un csv en table (dataframe) dans R
+#sur tuto DADA2: creer liste fnfs (R1) et fnrs (R2): faire attention car pattern par les meme pour nos echantillons donc ne pas coller et adapter pour nos echantillons c'est _1.fastq.gz pour nous
+#pour samplename = meme numero d'échantillons, normalement le coller c'est bon
+#si bug sur vm: rénitialiser R (utiliser de saver workspace de l'environment souvent en lui donna t 1 nom)
+#errorF = objet, prend beaucoup de temps a charger, va se trouver dans l'environment, ne pas le perdre donc save environment de travailler donc pas besoin de les regarder sur R plante
+
+#si vm plante, et perdu environment de travail. Pour recuperer, faire 'charger un environment de travail' pour pouvoir direct les recuperer donc pas besoin de tout recharger (eg: package, variables, ect)
+#commentaires = ce qu'on fait et pourquoi on fait ca (rapport d'analyse): mélange de texte + code + figure. Commentaire pas avec # car en dehors des chunks de code R
+#mettre le chemin complet pour les path, pas le tild
+#echo = commande qui montre la valeur d'1 variable
+#la commande path doit finir par 'data article' pour aller chercher les échantillions
+
+```{r}
+library(dada2); packageVersion("dada2")
+```
+
+Après avoir 
