@@ -32,4 +32,28 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dada2); packageVersion("dada2")
 ```
 
-Après avoir 
+After downloading the SraRun Table.csv and mu raw data, I downladed dada2 on Rstudio.
+The second step is to define the path variable, which is the path to the extracted directory.
+
+```{r}
+path <- "/home/rstudio/Dada2/Dada2/data article"
+list.files(path)
+metadata<-("SraRunTable.csv")
+head(metadata)
+```
+Now, that the raw data is loaded, we can start the analyse. Firstly, we need to rad the names of the fastq files. Then, we manipulate them so they match the lists of the forward and reverse fastq files. The 3rd line is to extract the sample names.
+
+```{r}
+fnFs <- sort(list.files(path, pattern="_1.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_2.fastq.gz", full.names = TRUE))
+sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
+```
+
+This next line of code is to visualise the quality profile of the forward and reverse reads using a quality plot.
+```{r}
+plotQualityProfile(fnFs[1:2])
+plotQualityProfile(fnRs[1:2])
+```
+This shows us that the forward and the reverse reads don't have the same quality.
+The forward reads maintain a very high quality throughout most of the sequencing run, with the quality score remaining around 30 to 40 across almost 300 cycles. We only see a small decrease in quality at the end of the reads. This means that we can expect a low sequencing error rate.
+The reverse reads have a noticeable decline in quality 
