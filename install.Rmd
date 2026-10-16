@@ -29,3 +29,10 @@ if (!requireNamespace("BiocManager", quietly=TRUE))
 BiocManager::install("DECIPHER")
 ```
 
+```{r}
+install.packages("igraph", type="source")
+```
+```{r}
+BiocManager::install("phyloseq", update=FALSE)
+```
+
