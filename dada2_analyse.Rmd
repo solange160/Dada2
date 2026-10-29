@@ -102,7 +102,6 @@ head(taxa)
 library(dada2)
 # Remplacez le nom par le nom exact du fichier qui est apparu dans l'onglet Files
 taxa2 <- addSpecies(taxa, "silva_v138.2_assignSpecies.fa.gz")
-
 head(taxa)
 ```
 ```{r}
