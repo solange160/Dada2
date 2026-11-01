@@ -11,6 +11,7 @@ library(dada2); packageVersion("dada2")
 path <- "/home/rstudio/Dada2/Dada2/MiSeq_SOP" # CHANGE ME to the directory containing the fastq files after unzipping.
 list.files(path)
 ```
+The following chunk takes the raw sequencing files, separating F1 (forward) and R2 (reverse) sequences. Then, the sample names are extracted from the file names.
 ```{r}
 # Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
 fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
@@ -19,68 +20,67 @@ fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
 sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 ```
 
+The following chunk generates plots to visualise the quality of the raw sequence. This helps us determine at which sequencing cycle the auqlity decreases, so we can choose the proper truncation thresholds.
 ```{r}
 plotQualityProfile(fnFs[1:2])
-
-```
-
-
-```{r}
 plotQualityProfile(fnRs[1:2])
 ```
+By looking at both graphs, we can see that the forward sequences have a high quality score (above 30) for the first 250 cycles. The reverse sequence, however, contains a significant decrease after cycle 160, which explains why we use truncLen=c(240, 160) during filtering.
 
-
+The next chunk filters out poor-quality sequences. it trims them to a defined length, and removes undetermined bases and the PhiX genome.
 ```{r}
 # Place filtered files in filtered/ subdirectory
 filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
 filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
 names(filtFs) <- sample.names
 names(filtRs) <- sample.names
-```
 
-```{r}
+## Apply the filter: trim R1 at 240bp and R2 at 160bp, max 2 expected errors
 out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
               maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
               compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE (only needed for filterAndTrim)
 head(out)   
 ```
 
+The next chunk is used to estimate the error profile specific to the sequencing run. It's essencial to ddistinguish true biological variants from sequencing errors.
 ```{r}
 errF <- learnErrors(filtFs, multithread=TRUE)
-```
-```{r}
 errR <- learnErrors(filtRs, multithread=TRUE)
-```
-```{r}
 plotErrors(errF, nominalQ=TRUE)
-
 ```
+
+The graphs shows the modeled error rates (defined by the back lines) and track the observed error frequencies (points) for all base substitutions. As the consensus quality scores increase, the error rates decrease, which confirms that this is a well-fitted model.
+
+The next chunk is usedapply the core sample inference algorithm to the filtered and trimmed sequence data, so we can identify the true Amplicon Sequence Variants.
 ```{r}
 dadaFs <- dada(filtFs, err=errF, multithread=TRUE)
-```
-```{r}
 dadaRs <- dada(filtRs, err=errR, multithread=TRUE)
 ```
+
 ```{r}
 dadaFs[[1]]
 ```
+
+The next chunk is used to merges the forward and reverse sequences so we can reconstruct the complete amplicon sequence based on their overlapping regions.
 ```{r}
 mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE)
 # Inspect the merger data.frame from the first sample
 head(mergers[[1]])
 ```
+The next chunk compiles the merged sequences into an abundance matriix to show how many times each variant appears in each sample.
 ```{r}
 seqtab <- makeSequenceTable(mergers)
 dim(seqtab)
 # Inspect distribution of sequence lengths
 table(nchar(getSequences(seqtab)))
 ```
-
+The next chunk hemps used identify and remove chimeric sequences. Those sequences are artifical artifacts that are created during PCR.
 ```{r}
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 dim(seqtab.nochim)
 sum(seqtab.nochim)/sum(seqtab)
 ```
+The next chunk creates a summary table so we can verify the percentage of sequences successfully retained through the steps above.
 ```{r}
 getN <- function(x) sum(getUniques(x))
 track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
@@ -89,10 +89,11 @@ colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "n
 rownames(track) <- sample.names
 head(track)
 ```
+The next few chunks are part of the taxonomic assignment, for the identified ASVs (starting at Kingdom, then Genus, and Species). It compares them to specific reference databases to be the most accurate possible.
 ```{r}
 library(dada2)
 
-# Lancer l'assignation taxonomique avec le bon chemin
+# Assign taxonomy up to the Genus level
 taxa <- assignTaxonomy(seqtab.nochim, "silva_nr99_v138.2_toGenus_trainset.fa.gz", multithread = TRUE)
 
 # Vérifier les résultats
@@ -100,7 +101,7 @@ head(taxa)
 ```
 ```{r}
 library(dada2)
-# Remplacez le nom par le nom exact du fichier qui est apparu dans l'onglet Files
+# Add species-level assignment
 taxa2 <- addSpecies(taxa, "silva_v138.2_assignSpecies.fa.gz")
 head(taxa)
 ```
@@ -113,7 +114,7 @@ head(taxa.print)
 ```{r}
 library(DECIPHER); packageVersion("DECIPHER")
 ```
-
+The next 2 chunks are used to evaluate the accuracy of the mock community. it contains 20 bacterial strains. When we run it, 20 ASVs exactly match the reference genomes of the expected community, which givese us a residual error rate after the DADA2 pipeline of 0% for the sample.
 ```{r}
 unqs.mock <- seqtab.nochim["Mock",]
 unqs.mock <- sort(unqs.mock[unqs.mock>0], decreasing=TRUE) # Drop ASVs absent in the Mock
@@ -125,8 +126,9 @@ match.ref <- sum(sapply(names(unqs.mock), function(x) any(grepl(x, mock.ref))))
 cat("Of those,", sum(match.ref), "were exact matches to the expected reference sequences.\n")
 ```
 
-#import into phyloseq
+The rest of the analyse uses phyloseq
 ```{r}
+#import into phyloseq
 library(phyloseq); packageVersion("phyloseq")
 ```
 ```{r}
@@ -138,46 +140,56 @@ library(ggplot2); packageVersion("ggplot2")
 ```{r}
 theme_set(theme_bw())
 ```
+
+Firstly, we need to construct the Phyloseq object to analyse the ecological diversity. Phyloseq combines the sequence table, the taxonomy assignments, and the experimental metadata to create an unified data object.
 ```{r}
+# Extract sample metadata from sample names
 samples.out <- rownames(seqtab.nochim)
 subject <- sapply(strsplit(samples.out, "D"), `[`, 1)
 gender <- substr(subject,1,1)
 subject <- substr(subject,2,999)
 day <- as.integer(sapply(strsplit(samples.out, "D"), `[`, 2))
+
+# Create sample metadata dataframe
 samdf <- data.frame(Subject=subject, Gender=gender, Day=day)
 samdf$When <- "Early"
 samdf$When[samdf$Day>100] <- "Late"
 rownames(samdf) <- samples.out
-```
-```{r}
+
+# Assemble the phyloseq object (ASV table + Taxonomy + Metadata)
 ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE),
                sample_data(samdf),
                tax_table(taxa))
 ps <- prune_samples(sample_names(ps) != "Mock", ps) # Remove mock sample
-```
-```{r}
+
 dna <- Biostrings::DNAStringSet(taxa_names(ps))
 names(dna) <- taxa_names(ps)
 ps <- merge_phyloseq(ps, dna)
 taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
 ps
 ```
+
 ```{r}
+# Plot Alpha Diversity metrics
 plot_richness(ps, x="Day", measures=c("Shannon", "Simpson"), color="When")
 ```
 
 ```{r}
 # Transform data to proportions as appropriate for Bray-Curtis distances
 ps.prop <- transform_sample_counts(ps, function(otu) otu/sum(otu))
+# Calculate Bray-Curtis distance matrix and run NMDS ordination
 ord.nmds.bray <- ordinate(ps.prop, method="NMDS", distance="bray")
 ```
 ```{r}
+# Visualize the NMDS ordination plot
 plot_ordination(ps.prop, ord.nmds.bray, color="When", title="Bray NMDS")
 ```
 ```{r}
+# Filter for the top 20 most abundant taxa
 top20 <- names(sort(taxa_sums(ps), decreasing=TRUE))[1:20]
 ps.top20 <- transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
 ps.top20 <- prune_taxa(top20, ps.top20)
+# Plot relative abundance at the Family level
 plot_bar(ps.top20, x="Day", fill="Family") + facet_wrap(~When, scales="free_x")
 ```
 
