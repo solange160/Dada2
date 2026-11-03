@@ -1,4 +1,4 @@
-R Notebook
+DADA2-tutorial_Solange
 ================
 
 ``` r
@@ -38,15 +38,24 @@ list.files(path)
     ## [43] "mouse.dpw.metadata"            "mouse.time.design"            
     ## [45] "stability.batch"               "stability.files"
 
+The following chunk takes the raw sequencing files, separating F1
+(forward) and R2 (reverse) sequences. Then, the sample names are
+extracted from the file names.
+
 ``` r
-# Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
+# Separate forward (R1) and reverse (R2) reads and extract sample names from filenames
 fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 ```
 
+The following chunk generates plots to visualise the quality of the raw
+sequence. This helps us determine at which sequencing cycle the auqlity
+decreases, so we can choose the proper truncation thresholds.
+
 ``` r
+# Plot sequence quality scores to determine where to truncate the reads
 plotQualityProfile(fnFs[1:2])
 ```
 
@@ -56,7 +65,14 @@ plotQualityProfile(fnFs[1:2])
 plotQualityProfile(fnRs[1:2])
 ```
 
-![](dada2_analyse_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](dada2_analyse_files/figure-gfm/unnamed-chunk-4-2.png)<!-- --> By
+looking at both graphs, we can see that the forward sequences have a
+high quality score (above 30) for the first 250 cycles. The reverse
+sequence, however, contains a significant decrease after cycle 160,
+which explains why we use truncLen=c(240, 160) during filtering.
+
+The next chunk filters out poor-quality sequences. it trims them to a
+defined length, and removes undetermined bases and the PhiX genome.
 
 ``` r
 # Place filtered files in filtered/ subdirectory
@@ -64,9 +80,8 @@ filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
 filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
 names(filtFs) <- sample.names
 names(filtRs) <- sample.names
-```
 
-``` r
+# Filter reads based on quality (maxEE=2), remove Ns, and truncate forward reads to 240bp and reverse to 160bp
 out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
               maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
               compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE (only needed for filterAndTrim)
@@ -81,7 +96,12 @@ head(out)
     ## F3D143_S209_L001_R1_001.fastq     3178      2941
     ## F3D144_S210_L001_R1_001.fastq     4827      4312
 
+The next chunk is used to estimate the error profile specific to the
+sequencing run. It’s essencial to ddistinguish true biological variants
+from sequencing errors.
+
 ``` r
+# Use machine learning to model the specific sequencing error rates of this run
 errF <- learnErrors(filtFs, multithread=TRUE)
 ```
 
@@ -104,9 +124,19 @@ plotErrors(errF, nominalQ=TRUE)
     ## Removed 164 rows containing missing values or values outside the scale range
     ## (`geom_line()`).
 
-![](dada2_analyse_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![](dada2_analyse_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+The graphs shows the modeled error rates (defined by the back lines) and
+track the observed error frequencies (points) for all base
+substitutions. As the consensus quality scores increase, the error rates
+decrease, which confirms that this is a well-fitted model.
+
+The next chunk is usedapply the core sample inference algorithm to the
+filtered and trimmed sequence data, so we can identify the true Amplicon
+Sequence Variants.
 
 ``` r
+# Apply the core DADA2 algorithm to infer true biological sequences (ASVs) by correcting errors
 dadaFs <- dada(filtFs, err=errF, multithread=TRUE)
 ```
 
@@ -164,7 +194,12 @@ dadaFs[[1]]
     ## 128 sequence variants were inferred from 1979 input unique sequences.
     ## Key parameters: OMEGA_A = 1e-40, OMEGA_C = 1e-40, BAND_SIZE = 16
 
+The next chunk is used to merges the forward and reverse sequences so we
+can reconstruct the complete amplicon sequence based on their
+overlapping regions.
+
 ``` r
+# Merge overlapping forward and reverse denoised reads to reconstruct the full amplicon
 mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE)
 ```
 
@@ -228,7 +263,11 @@ head(mergers[[1]])
     ## 5       345       5       6    148         0      0      1   TRUE
     ## 6       282       6       5    148         0      0      2   TRUE
 
+The next chunk compiles the merged sequences into an abundance matriix
+to show how many times each variant appears in each sample.
+
 ``` r
+# Compile all merged sequences into a single ASV abundance table
 seqtab <- makeSequenceTable(mergers)
 dim(seqtab)
 ```
@@ -244,7 +283,11 @@ table(nchar(getSequences(seqtab)))
     ## 251 252 253 254 255 
     ##   1  88 196   6   2
 
+The next chunk hemps used identify and remove chimeric sequences. Those
+sequences are artifical artifacts that are created during PCR.
+
 ``` r
+# Identify and remove chimeric sequences (PCR artifacts)
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 ```
 
@@ -261,6 +304,11 @@ sum(seqtab.nochim)/sum(seqtab)
 ```
 
     ## [1] 0.9640374
+
+The results show us that
+
+The next chunk creates a summary table so we can verify the percentage
+of sequences successfully retained through the steps above.
 
 ``` r
 getN <- function(x) sum(getUniques(x))
@@ -279,10 +327,15 @@ head(track)
     ## F3D143  3178     2941      2822      2868   2553    2519
     ## F3D144  4827     4312      4151      4228   3646    3507
 
+The next few chunks are part of the taxonomic assignment, for the
+identified ASVs (starting at Kingdom, then Genus, and Species). It
+compares them to specific reference databases to be the most accurate
+possible.
+
 ``` r
 library(dada2)
 
-# Lancer l'assignation taxonomique avec le bon chemin
+# Assign taxonomy up to the Genus level
 taxa <- assignTaxonomy(seqtab.nochim, "silva_nr99_v138.2_toGenus_trainset.fa.gz", multithread = TRUE)
 
 # Vérifier les résultats
@@ -334,7 +387,7 @@ head(taxa)
 
 ``` r
 library(dada2)
-# Remplacez le nom par le nom exact du fichier qui est apparu dans l'onglet Files
+# Add species-level assignment
 taxa2 <- addSpecies(taxa, "silva_v138.2_assignSpecies.fa.gz")
 head(taxa)
 ```
@@ -467,6 +520,12 @@ library(DECIPHER); packageVersion("DECIPHER")
 
     ## [1] '3.8.1'
 
+The next 2 chunks are used to evaluate the accuracy of the mock
+community. it contains 20 bacterial strains. When we run it, 20 ASVs
+exactly match the reference genomes of the expected community, which
+givese us a residual error rate after the DADA2 pipeline of 0% for the
+sample.
+
 ``` r
 unqs.mock <- seqtab.nochim["Mock",]
 unqs.mock <- sort(unqs.mock[unqs.mock>0], decreasing=TRUE) # Drop ASVs absent in the Mock
@@ -483,9 +542,10 @@ cat("Of those,", sum(match.ref), "were exact matches to the expected reference s
 
     ## Of those, 20 were exact matches to the expected reference sequences.
 
-\#import into phyloseq
+The rest of the analyse uses phyloseq
 
 ``` r
+#import into phyloseq
 library(phyloseq); packageVersion("phyloseq")
 ```
 
@@ -514,26 +574,31 @@ library(ggplot2); packageVersion("ggplot2")
 theme_set(theme_bw())
 ```
 
+Firstly, we need to construct the Phyloseq object to analyse the
+ecological diversity. Phyloseq combines the sequence table, the taxonomy
+assignments, and the experimental metadata to create an unified data
+object.
+
 ``` r
+# Extract sample metadata from sample names
 samples.out <- rownames(seqtab.nochim)
 subject <- sapply(strsplit(samples.out, "D"), `[`, 1)
 gender <- substr(subject,1,1)
 subject <- substr(subject,2,999)
 day <- as.integer(sapply(strsplit(samples.out, "D"), `[`, 2))
+
+# Create sample metadata dataframe
 samdf <- data.frame(Subject=subject, Gender=gender, Day=day)
 samdf$When <- "Early"
 samdf$When[samdf$Day>100] <- "Late"
 rownames(samdf) <- samples.out
-```
 
-``` r
+# Assemble the phyloseq object (ASV table + Taxonomy + Metadata)
 ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE),
                sample_data(samdf),
                tax_table(taxa))
 ps <- prune_samples(sample_names(ps) != "Mock", ps) # Remove mock sample
-```
 
-``` r
 dna <- Biostrings::DNAStringSet(taxa_names(ps))
 names(dna) <- taxa_names(ps)
 ps <- merge_phyloseq(ps, dna)
@@ -548,6 +613,7 @@ ps
     ## refseq()      DNAStringSet:      [ 232 reference sequences ]
 
 ``` r
+# Plot Alpha Diversity metrics
 plot_richness(ps, x="Day", measures=c("Shannon", "Simpson"), color="When")
 ```
 
@@ -567,57 +633,65 @@ plot_richness(ps, x="Day", measures=c("Shannon", "Simpson"), color="When")
     ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
     ## generated.
 
-![](dada2_analyse_files/figure-gfm/unnamed-chunk-31-1.png)<!-- -->
+![](dada2_analyse_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
 
 ``` r
 # Transform data to proportions as appropriate for Bray-Curtis distances
 ps.prop <- transform_sample_counts(ps, function(otu) otu/sum(otu))
+# Calculate Bray-Curtis distance matrix and run NMDS ordination
 ord.nmds.bray <- ordinate(ps.prop, method="NMDS", distance="bray")
 ```
 
     ## Run 0 stress 0.08043117 
-    ## Run 1 stress 0.08616061 
-    ## Run 2 stress 0.1358149 
-    ## Run 3 stress 0.1212044 
-    ## Run 4 stress 0.0807634 
-    ## ... Procrustes: rmse 0.01055721  max resid 0.03250215 
-    ## Run 5 stress 0.1228545 
-    ## Run 6 stress 0.09477207 
-    ## Run 7 stress 0.08076344 
-    ## ... Procrustes: rmse 0.0106062  max resid 0.0326612 
-    ## Run 8 stress 0.08616061 
-    ## Run 9 stress 0.1320348 
-    ## Run 10 stress 0.09477208 
-    ## Run 11 stress 0.08076338 
-    ## ... Procrustes: rmse 0.01052879  max resid 0.03240885 
-    ## Run 12 stress 0.09477206 
-    ## Run 13 stress 0.08076338 
-    ## ... Procrustes: rmse 0.01051659  max resid 0.03236913 
-    ## Run 14 stress 0.08076337 
-    ## ... Procrustes: rmse 0.01043466  max resid 0.03210139 
-    ## Run 15 stress 0.08616061 
-    ## Run 16 stress 0.09477229 
-    ## Run 17 stress 0.1228545 
-    ## Run 18 stress 0.08076341 
-    ## ... Procrustes: rmse 0.01057508  max resid 0.03255951 
-    ## Run 19 stress 0.08076341 
-    ## ... Procrustes: rmse 0.01057653  max resid 0.03256459 
-    ## Run 20 stress 0.1228545 
-    ## *** Best solution was not repeated -- monoMDS stopping criteria:
-    ##     19: stress ratio > sratmax
-    ##      1: scale factor of the gradient < sfgrmin
+    ## Run 1 stress 0.09477217 
+    ## Run 2 stress 0.08076339 
+    ## ... Procrustes: rmse 0.01048929  max resid 0.03227579 
+    ## Run 3 stress 0.08076336 
+    ## ... Procrustes: rmse 0.01047666  max resid 0.03223793 
+    ## Run 4 stress 0.1212044 
+    ## Run 5 stress 0.08076342 
+    ## ... Procrustes: rmse 0.01050652  max resid 0.03233586 
+    ## Run 6 stress 0.08076337 
+    ## ... Procrustes: rmse 0.01051042  max resid 0.03234855 
+    ## Run 7 stress 0.0947712 
+    ## Run 8 stress 0.1212044 
+    ## Run 9 stress 0.08076339 
+    ## ... Procrustes: rmse 0.01054424  max resid 0.03245909 
+    ## Run 10 stress 0.08043117 
+    ## ... Procrustes: rmse 4.791614e-06  max resid 1.18983e-05 
+    ## ... Similar to previous best
+    ## Run 11 stress 0.08076337 
+    ## ... Procrustes: rmse 0.01051954  max resid 0.03237864 
+    ## Run 12 stress 0.08043117 
+    ## ... Procrustes: rmse 6.296851e-06  max resid 1.685744e-05 
+    ## ... Similar to previous best
+    ## Run 13 stress 0.08616061 
+    ## Run 14 stress 0.1212044 
+    ## Run 15 stress 0.1358142 
+    ## Run 16 stress 0.1010632 
+    ## Run 17 stress 0.08616061 
+    ## Run 18 stress 0.08076337 
+    ## ... Procrustes: rmse 0.01049795  max resid 0.03230793 
+    ## Run 19 stress 0.08076338 
+    ## ... Procrustes: rmse 0.01053328  max resid 0.03242323 
+    ## Run 20 stress 0.08076337 
+    ## ... Procrustes: rmse 0.01051688  max resid 0.03237021 
+    ## *** Best solution repeated 2 times
 
 ``` r
+# Visualize the NMDS ordination plot
 plot_ordination(ps.prop, ord.nmds.bray, color="When", title="Bray NMDS")
 ```
 
-![](dada2_analyse_files/figure-gfm/unnamed-chunk-33-1.png)<!-- -->
+![](dada2_analyse_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
 
 ``` r
+# Filter for the top 20 most abundant taxa
 top20 <- names(sort(taxa_sums(ps), decreasing=TRUE))[1:20]
 ps.top20 <- transform_sample_counts(ps, function(OTU) OTU/sum(OTU))
 ps.top20 <- prune_taxa(top20, ps.top20)
+# Plot relative abundance at the Family level
 plot_bar(ps.top20, x="Day", fill="Family") + facet_wrap(~When, scales="free_x")
 ```
 
-![](dada2_analyse_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
+![](dada2_analyse_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->

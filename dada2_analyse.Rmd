@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "DADA2-tutorial_Solange"
 output: github_document
 ---
 ```{r}
@@ -13,7 +13,7 @@ list.files(path)
 ```
 The following chunk takes the raw sequencing files, separating F1 (forward) and R2 (reverse) sequences. Then, the sample names are extracted from the file names.
 ```{r}
-# Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
+# Separate forward (R1) and reverse (R2) reads and extract sample names from filenames
 fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_R2_001.fastq", full.names = TRUE))
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
@@ -22,6 +22,7 @@ sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
 
 The following chunk generates plots to visualise the quality of the raw sequence. This helps us determine at which sequencing cycle the auqlity decreases, so we can choose the proper truncation thresholds.
 ```{r}
+# Plot sequence quality scores to determine where to truncate the reads
 plotQualityProfile(fnFs[1:2])
 plotQualityProfile(fnRs[1:2])
 ```
@@ -35,7 +36,7 @@ filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
 names(filtFs) <- sample.names
 names(filtRs) <- sample.names
 
-## Apply the filter: trim R1 at 240bp and R2 at 160bp, max 2 expected errors
+# Filter reads based on quality (maxEE=2), remove Ns, and truncate forward reads to 240bp and reverse to 160bp
 out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
               maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
               compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE (only needed for filterAndTrim)
@@ -44,6 +45,7 @@ head(out)
 
 The next chunk is used to estimate the error profile specific to the sequencing run. It's essencial to ddistinguish true biological variants from sequencing errors.
 ```{r}
+# Use machine learning to model the specific sequencing error rates of this run
 errF <- learnErrors(filtFs, multithread=TRUE)
 errR <- learnErrors(filtRs, multithread=TRUE)
 plotErrors(errF, nominalQ=TRUE)
@@ -53,6 +55,7 @@ The graphs shows the modeled error rates (defined by the back lines) and track t
 
 The next chunk is usedapply the core sample inference algorithm to the filtered and trimmed sequence data, so we can identify the true Amplicon Sequence Variants.
 ```{r}
+# Apply the core DADA2 algorithm to infer true biological sequences (ASVs) by correcting errors
 dadaFs <- dada(filtFs, err=errF, multithread=TRUE)
 dadaRs <- dada(filtRs, err=errR, multithread=TRUE)
 ```
@@ -63,12 +66,14 @@ dadaFs[[1]]
 
 The next chunk is used to merges the forward and reverse sequences so we can reconstruct the complete amplicon sequence based on their overlapping regions.
 ```{r}
+# Merge overlapping forward and reverse denoised reads to reconstruct the full amplicon
 mergers <- mergePairs(dadaFs, filtFs, dadaRs, filtRs, verbose=TRUE)
 # Inspect the merger data.frame from the first sample
 head(mergers[[1]])
 ```
 The next chunk compiles the merged sequences into an abundance matriix to show how many times each variant appears in each sample.
 ```{r}
+# Compile all merged sequences into a single ASV abundance table
 seqtab <- makeSequenceTable(mergers)
 dim(seqtab)
 # Inspect distribution of sequence lengths
@@ -76,10 +81,13 @@ table(nchar(getSequences(seqtab)))
 ```
 The next chunk hemps used identify and remove chimeric sequences. Those sequences are artifical artifacts that are created during PCR.
 ```{r}
+# Identify and remove chimeric sequences (PCR artifacts)
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 dim(seqtab.nochim)
 sum(seqtab.nochim)/sum(seqtab)
 ```
+The results show us that 
+
 The next chunk creates a summary table so we can verify the percentage of sequences successfully retained through the steps above.
 ```{r}
 getN <- function(x) sum(getUniques(x))
