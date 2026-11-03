@@ -2,6 +2,31 @@
 title: "DADA2-tutorial_Solange"
 output: github_document
 ---
+
+#dada 2 tutorial#
+
+##what is dada2 ?##
+dada2, also calld divisive amplicon denoising algorithm 2, is an open-source bioinformatics software package in R. It's used to process raw amplicon sequencing data, for example 16S rRNA, into highly accurate microbial community profiles. It's considered to be a modern standard in microbiome research as researchers can accurately identify the microorganisms present in a sample, clinical or environmental.
+dada2 is based on 4 different processes, error correction, ASV resolution, cross-study comparability, and chimera removal. 
+Error correction is a statistical model of a specific error rates of a sequencing machine's run, which successfully distinguish the true biological sequences from the mistakes (for example, made during sequencing or PCR).
+ASV resolution is the outputs exact amplicon sequence variants (ASVs) down to single-nucleotide differences. Older methods, used as OTUs (operational taxonomic units) work by grouping sequences into broad 97% similarities, which is getting remplaced by dada2.
+cross-study comparability is used to compare microbial datasets across different labs and experiments. ASVs is the exact and true-to-life DNA sequences, not study-specific clusters, so it's easier for researchers to compare different datasets.
+Lastly, dada2 can automatically detects and filters out chimeras, which are artifical sequence hybrids, generated during the PCR amplicification process.
+
+##what is phyloseq ?##
+phyloseq is an open-source R package used to analyse and visualise microbiome censes date, for example, 16S, or metagenomics. 
+Phyloseq has 5 main features that we used:
+It comùbines all the different data components of the microbiome experiment int a single phyloseq-class experiment-level object. In our experiment we have:
+1. OTU Table: the abundance counts of each sequence variants across samples.       
+2. Sample Data: the experiment variables.
+3. Taxonomy Table: the biological classification for each variant.   
+4. DNAStringSet: the evolutionary distances and DNA sequences.
+
+Phyloseq is also used to calculate and plot within-sample diversity metric. In the tutorial, we used Shannon, Simpson to produce an observed species richness graph.
+We can also compute ecological distance matrices, such as Bray-Curtis, and integrates directly with ordination techniques, such as NMDS. Its purpose is to  visualise how microbial communities differ between different sample groups.
+We can also generate the taxonomic composition of a sample. Phyloseq can generate a clean and customisable relative abundance bar plot, which shows community composition at different taxonomic levels. 
+Lastly, the function ggplot2, when used with phyloseq allows us to produce publication-ready visualisations and customise downstrean statistical pipelines. 
+
 ```{r}
 library(dada2); packageVersion("dada2")
 ```

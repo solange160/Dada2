@@ -1,6 +1,53 @@
 DADA2-tutorial_Solange
 ================
 
+\#dada 2 tutorial#
+
+\##what is dada2 ?## dada2, also calld divisive amplicon denoising
+algorithm 2, is an open-source bioinformatics software package in R.
+It’s used to process raw amplicon sequencing data, for example 16S rRNA,
+into highly accurate microbial community profiles. It’s considered to be
+a modern standard in microbiome research as researchers can accurately
+identify the microorganisms present in a sample, clinical or
+environmental. dada2 is based on 4 different processes, error
+correction, ASV resolution, cross-study comparability, and chimera
+removal. Error correction is a statistical model of a specific error
+rates of a sequencing machine’s run, which successfully distinguish the
+true biological sequences from the mistakes (for example, made during
+sequencing or PCR). ASV resolution is the outputs exact amplicon
+sequence variants (ASVs) down to single-nucleotide differences. Older
+methods, used as OTUs (operational taxonomic units) work by grouping
+sequences into broad 97% similarities, which is getting remplaced by
+dada2. cross-study comparability is used to compare microbial datasets
+across different labs and experiments. ASVs is the exact and
+true-to-life DNA sequences, not study-specific clusters, so it’s easier
+for researchers to compare different datasets. Lastly, dada2 can
+automatically detects and filters out chimeras, which are artifical
+sequence hybrids, generated during the PCR amplicification process.
+
+\##what is phyloseq ?## phyloseq is an open-source R package used to
+analyse and visualise microbiome censes date, for example, 16S, or
+metagenomics. Phyloseq has 5 main features that we used: It comùbines
+all the different data components of the microbiome experiment int a
+single phyloseq-class experiment-level object. In our experiment we
+have: 1. OTU Table: the abundance counts of each sequence variants
+across samples.\
+2. Sample Data: the experiment variables. 3. Taxonomy Table: the
+biological classification for each variant.\
+4. DNAStringSet: the evolutionary distances and DNA sequences.
+
+Phyloseq is also used to calculate and plot within-sample diversity
+metric. In the tutorial, we used Shannon, Simpson to produce an observed
+species richness graph. We can also compute ecological distance
+matrices, such as Bray-Curtis, and integrates directly with ordination
+techniques, such as NMDS. Its purpose is to visualise how microbial
+communities differ between different sample groups. We can also generate
+the taxonomic composition of a sample. Phyloseq can generate a clean and
+customisable relative abundance bar plot, which shows community
+composition at different taxonomic levels. Lastly, the function ggplot2,
+when used with phyloseq allows us to produce publication-ready
+visualisations and customise downstrean statistical pipelines.
+
 ``` r
 library(dada2); packageVersion("dada2")
 ```
@@ -643,39 +690,36 @@ ord.nmds.bray <- ordinate(ps.prop, method="NMDS", distance="bray")
 ```
 
     ## Run 0 stress 0.08043117 
-    ## Run 1 stress 0.09477217 
-    ## Run 2 stress 0.08076339 
-    ## ... Procrustes: rmse 0.01048929  max resid 0.03227579 
+    ## Run 1 stress 0.1228545 
+    ## Run 2 stress 0.08616061 
     ## Run 3 stress 0.08076336 
-    ## ... Procrustes: rmse 0.01047666  max resid 0.03223793 
-    ## Run 4 stress 0.1212044 
-    ## Run 5 stress 0.08076342 
-    ## ... Procrustes: rmse 0.01050652  max resid 0.03233586 
-    ## Run 6 stress 0.08076337 
-    ## ... Procrustes: rmse 0.01051042  max resid 0.03234855 
-    ## Run 7 stress 0.0947712 
-    ## Run 8 stress 0.1212044 
-    ## Run 9 stress 0.08076339 
-    ## ... Procrustes: rmse 0.01054424  max resid 0.03245909 
-    ## Run 10 stress 0.08043117 
-    ## ... Procrustes: rmse 4.791614e-06  max resid 1.18983e-05 
+    ## ... Procrustes: rmse 0.01048498  max resid 0.03226584 
+    ## Run 4 stress 0.08076337 
+    ## ... Procrustes: rmse 0.01050659  max resid 0.03233601 
+    ## Run 5 stress 0.08076339 
+    ## ... Procrustes: rmse 0.01053785  max resid 0.03243792 
+    ## Run 6 stress 0.08616061 
+    ## Run 7 stress 0.08043117 
+    ## ... Procrustes: rmse 3.725265e-06  max resid 8.845e-06 
     ## ... Similar to previous best
-    ## Run 11 stress 0.08076337 
-    ## ... Procrustes: rmse 0.01051954  max resid 0.03237864 
-    ## Run 12 stress 0.08043117 
-    ## ... Procrustes: rmse 6.296851e-06  max resid 1.685744e-05 
+    ## Run 8 stress 0.08076339 
+    ## ... Procrustes: rmse 0.01053896  max resid 0.03244155 
+    ## Run 9 stress 0.08616061 
+    ## Run 10 stress 0.09477225 
+    ## Run 11 stress 0.1212044 
+    ## Run 12 stress 0.1212044 
+    ## Run 13 stress 0.08076336 
+    ## ... Procrustes: rmse 0.01047604  max resid 0.03223631 
+    ## Run 14 stress 0.09477206 
+    ## Run 15 stress 0.08043117 
+    ## ... Procrustes: rmse 2.890912e-06  max resid 7.096414e-06 
     ## ... Similar to previous best
-    ## Run 13 stress 0.08616061 
-    ## Run 14 stress 0.1212044 
-    ## Run 15 stress 0.1358142 
-    ## Run 16 stress 0.1010632 
+    ## Run 16 stress 0.1212044 
     ## Run 17 stress 0.08616061 
-    ## Run 18 stress 0.08076337 
-    ## ... Procrustes: rmse 0.01049795  max resid 0.03230793 
-    ## Run 19 stress 0.08076338 
-    ## ... Procrustes: rmse 0.01053328  max resid 0.03242323 
-    ## Run 20 stress 0.08076337 
-    ## ... Procrustes: rmse 0.01051688  max resid 0.03237021 
+    ## Run 18 stress 0.0807634 
+    ## ... Procrustes: rmse 0.01056322  max resid 0.03252122 
+    ## Run 19 stress 0.08616061 
+    ## Run 20 stress 0.08616061 
     ## *** Best solution repeated 2 times
 
 ``` r
